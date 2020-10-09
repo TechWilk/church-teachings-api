@@ -1,6 +1,14 @@
 <?php
 // DIC configuration
 
+use TechWilk\Church\Teachings\IngestFeed\Feed\Fetcher\ScraperFeedFetcher;
+use TechWilk\Church\Teachings\IngestFeed\Feed\Parser\HtmlParser;
+use TechWilk\Church\Teachings\IngestFeed\Field\Cleanup\StringReplaceCleanup;
+use TechWilk\Church\Teachings\IngestFeed\Field\Cleanup\NoCleanup;
+use TechWilk\Church\Teachings\IngestFeed\Field\Cleanup\RegexCleanup;
+use TechWilk\Church\Teachings\IngestFeed\Field\Validator\NoValidator;
+use TechWilk\Church\Teachings\IngestFeed\Field\Validator\PresenceValidator;
+
 $container = $app->getContainer();
 
 // view renderer
@@ -16,4 +24,43 @@ $container['logger'] = function ($c) {
     $logger->pushProcessor(new Monolog\Processor\UidProcessor());
     $logger->pushHandler(new Monolog\Handler\StreamHandler($settings['path'], $settings['level']));
     return $logger;
+};
+
+// elequent
+$container['db'] = function ($container) {
+    $capsule = new \Illuminate\Database\Capsule\Manager;
+    $capsule->addConnection($container['settings']['db']);
+
+    $capsule->setAsGlobal();
+    $capsule->bootEloquent();
+
+    return $capsule;
+};
+
+$container[ScraperFeedFetcher::class] = function ($container) {
+    return new ScraperFeedFetcher(new GuzzleHttp\Client());
+};
+
+$container[HtmlParser::class] = function ($container) {
+    return new HtmlParser();
+};
+
+$container[NoCleanup::class] = function ($container) {
+    return new NoCleanup();
+};
+
+$container[PresenceValidator::class] = function ($container) {
+    return new PresenceValidator();
+};
+
+$container[NoValidator::class] = function ($container) {
+    return new NoValidator();
+};
+
+$container[StringReplaceCleanup::class] = function ($container) {
+    return new StringReplaceCleanup();
+};
+
+$container[RegexCleanup::class] = function ($container) {
+    return new RegexCleanup();
 };
