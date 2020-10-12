@@ -22,6 +22,11 @@ class ScraperFeedFetcher implements FeedFetcherInterface
                 return file_get_contents(__DIR__.'/../../../../../tests/data/scrape.html');
             case 'https://www.stkweb.org.uk/media/allmedia.aspx':
                 return file_get_contents(__DIR__ . '/../../../../../tests/data/scrape2.html');
+            case 'http://baystonhillchurch.sermon.net/rss/main':
+                return file_get_contents(__DIR__ . '/../../../../../tests/data/scrape3.rss');
+            case 'https://www.christchurchchester.com/sermons/Sermon_podcast.xml':
+                return file_get_contents(__DIR__ . '/../../../../../tests/data/scrape4.rss');
+
         }
     }
 

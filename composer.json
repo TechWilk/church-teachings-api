@@ -19,7 +19,8 @@
         "league/oauth2-server": "^6.1",
         "guzzlehttp/guzzle": "^7.1",
         "wa72/htmlpagedom": "^2.0",
-        "illuminate/database": "^8.9"
+        "illuminate/database": "^8.9",
+        "league/html-to-markdown": "^4.10"
     },
     "require-dev": {
         "phpunit/phpunit": "^6.5"

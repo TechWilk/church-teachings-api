@@ -10,11 +10,9 @@ class RegexCleanup implements FieldCleanupInterface
 {
     public function cleanupField(string $field, array $option): string
     {
-        $cleanedField = preg_replace(reset($option), '$1', $field);
+        preg_match(reset($option), $field, $matches);
 
-        if (is_null($cleanedField)) {
-            throw new Exception('Failed to cleanup with regex');
-        }
+        $cleanedField = $matches[1] ?? '';
 
         return trim($cleanedField);
     }

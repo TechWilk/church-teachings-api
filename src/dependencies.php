@@ -1,8 +1,10 @@
 <?php
 // DIC configuration
 
+use League\HTMLToMarkdown\HtmlConverter;
 use TechWilk\Church\Teachings\IngestFeed\Feed\Fetcher\ScraperFeedFetcher;
 use TechWilk\Church\Teachings\IngestFeed\Feed\Parser\HtmlParser;
+use TechWilk\Church\Teachings\IngestFeed\Field\Cleanup\HtmlToMarkdownCleanup;
 use TechWilk\Church\Teachings\IngestFeed\Field\Cleanup\StringReplaceCleanup;
 use TechWilk\Church\Teachings\IngestFeed\Field\Cleanup\NoCleanup;
 use TechWilk\Church\Teachings\IngestFeed\Field\Cleanup\RegexCleanup;
@@ -63,4 +65,12 @@ $container[StringReplaceCleanup::class] = function ($container) {
 
 $container[RegexCleanup::class] = function ($container) {
     return new RegexCleanup();
+};
+
+$container[HtmlToMarkdownCleanup::class] = function ($container) {
+    $converter = new HtmlConverter([
+        'strip_tags' => true,
+    ]);
+
+    return new HtmlToMarkdownCleanup($converter);
 };
