@@ -4,6 +4,7 @@
 use League\HTMLToMarkdown\HtmlConverter;
 use TechWilk\Church\Teachings\IngestFeed\Feed\Fetcher\ScraperFeedFetcher;
 use TechWilk\Church\Teachings\IngestFeed\Feed\Parser\HtmlParser;
+use TechWilk\Church\Teachings\IngestFeed\Feed\Parser\RssParser;
 use TechWilk\Church\Teachings\IngestFeed\Field\Cleanup\HtmlToMarkdownCleanup;
 use TechWilk\Church\Teachings\IngestFeed\Field\Cleanup\StringReplaceCleanup;
 use TechWilk\Church\Teachings\IngestFeed\Field\Cleanup\NoCleanup;
@@ -45,6 +46,10 @@ $container[ScraperFeedFetcher::class] = function ($container) {
 
 $container[HtmlParser::class] = function ($container) {
     return new HtmlParser();
+};
+
+$container[RssParser::class] = function ($container) {
+    return new RssParser();
 };
 
 $container[NoCleanup::class] = function ($container) {
