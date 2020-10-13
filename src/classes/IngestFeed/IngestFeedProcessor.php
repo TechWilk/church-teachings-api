@@ -4,13 +4,14 @@ declare(strict_types=1);
 
 namespace TechWilk\Church\Teachings\IngestFeed;
 
+use DateTimeImmutable;
+use Exception;
 use TechWilk\Church\Teachings\IngestFeed\Feed\Fetcher\FeedFetcherInterface;
 use TechWilk\Church\Teachings\IngestFeed\Feed\Parser\FeedParserInterface;
 use TechWilk\Church\Teachings\IngestFeed\Field\Cleanup\FieldCleanupInterface;
 use TechWilk\Church\Teachings\IngestFeed\Field\Validator\FieldValidatorInterface;
 use TechWilk\Church\Teachings\IngestFeed\Field\Validator\InvalidFieldException;
 use Illuminate\Database\Query\Builder;
-use Illuminate\Database\Capsule\Manager as DB;
 use Psr\Container\ContainerInterface;
 
 class IngestFeedProcessor
@@ -49,6 +50,7 @@ class IngestFeedProcessor
         $feedParser = $this->getFeedParser($feedData->parser_type);
 
         $feedString = $feedFetcher->fetchFeed($feedData->location);
+        $organiserId = $feedData->organiser_id;
 
         $feedMappingsTable = clone $this->feedMappingsTable;
         $feedMappingsFromDb = $feedMappingsTable->where('feed_id', '=', $feedId)->get();
@@ -81,7 +83,7 @@ class IngestFeedProcessor
 
                     if (!$fieldValidator->validateField($cleanedField, json_decode($fieldConfig->validator_config, true))) {
                         echo 'Failing #' . $key . ' due to "' . $fieldName . '" containing invalid data "' . $cleanedField . '"' . PHP_EOL;
-                        continue 2;
+                        throw new InvalidFieldException('"' . $fieldName . '" containing invalid data "' . $cleanedField . '"');
                     }
                     $feedItemContents[$fieldName] = $cleanedField;
                 }
@@ -97,7 +99,135 @@ class IngestFeedProcessor
         }
 
         var_dump($feedContents);
-        
+
+        $this->persistItemsToStorage($organiserId, $feedContents);
+    }
+
+    protected function persistItemsToStorage(int $organiserId, array $feedContents): void
+    {
+        $teachingsTable = $this->container->get('db')->table('teachings');
+        $passagesTable = $this->container->get('db')->table('teaching_passages');
+
+        foreach ($feedContents as $item) {
+            $speakerId = $this->findSpeakerIdFromName($item['speaker']);
+            $seriesId = $this->findSeriesIdFromName($organiserId, $item['series']);
+
+            $teachingId = $teachingsTable->insertGetId([
+                'dedupe_id' => $item['dedupe'],
+                'dedupe_hash' => hash('sha3-512', $item['dedupe']),
+                'name' => $item['title'],
+                'slug' => $this->slugify($item['title']),
+                'date' => $this->parseDate($item['date'])->format('Y-m-d H:i:s'),
+                'file_hash' => '',
+                'file_url' => $item['file'] ?? '',
+                'organiser_id' => $organiserId,
+                'speaker_id' => $speakerId,
+                'series_id' => $seriesId,
+                'description' => $item['description'] ?? '',
+                'duration' => 0,
+                'url' => $item['url'],
+            ]);
+
+            $passages = $this->parseVerses($item['verses']);
+            foreach ($passages as $passage) {
+                $passagesTable->insert([
+                    'teaching_id' => $teachingId,
+                    'passage' => $passage,
+                ]);
+            }
+        }
+        exit;
+    }
+
+    protected function parseVerses(string $verses): array
+    {
+        return [$verses];
+    }
+
+    protected function parseDate(string $dateString): DateTimeImmutable
+    {
+        $date = null;
+        try {
+            $date = new DateTimeImmutable($dateString);
+        } catch (Exception $e) {
+
+        }
+
+        if (!$date instanceof DateTimeImmutable) {
+            $date = DateTimeImmutable::createFromFormat('d/m/Y', $dateString);
+        }
+
+        if (!$date instanceof DateTimeImmutable) {
+            $date = DateTimeImmutable::createFromFormat('dmy', $dateString);
+        }
+
+        return $date;
+    }
+
+    protected function slugify(string $name): string
+    {
+        $name = preg_replace('/[^a-zA-Z0-9]/', '-', $name);
+        $name = preg_replace('/\-{2}/', '-', $name);
+        $name = strtolower($name);
+
+        return $name;
+    }
+
+    protected $speakersCache = [];
+    protected function findSpeakerIdFromName(string $name): int
+    {
+        if (array_key_exists($name, $this->speakersCache)) {
+            return $this->speakersCache[$name];
+        }
+
+        $speakersTable = $this->container->get('db')->table('speakers');
+        $speaker = $speakersTable->where('full_name', '=', $name)->first();
+        if ($speaker) {
+            $this->speakersCache[$name] = $speaker->id;
+            
+            return $speaker->id;
+        }
+
+        $speakerId = $speakersTable->insertGetId(
+            [
+                'full_name' => $name,
+                'known_name' => $name, 
+                'description' => '', 
+                'image_hash' => '',
+            ]
+        );
+
+        $this->speakersCache[$name] = $speakerId;
+            
+        return $speakerId;
+    }
+
+    protected $seriesCache = [];
+    protected function findSeriesIdFromName(int $organiserId, string $name): int
+    {
+        if (array_key_exists($name, $this->seriesCache)) {
+            return $this->seriesCache[$organiserId . $name];
+        }
+
+        $seriesTable = $this->container->get('db')->table('teaching_series');
+        $series = $seriesTable->where('organiser_id', '=', $organiserId)->where('name', '=', $name)->first();
+        if ($series) {
+            $this->seriesCache[$organiserId . $name] = $series->id;
+
+            return $series->id;
+        }
+
+        $seriesId = $seriesTable->insertGetId(
+            [
+                'organiser_id' => $organiserId,
+                'name' => $name,
+                'description' => '',
+            ]
+        );
+
+        $this->seriesCache[$organiserId . $name] = $seriesId;
+
+        return $seriesId;
     }
 
     protected function getFeedFetcher(string $className): FeedFetcherInterface
