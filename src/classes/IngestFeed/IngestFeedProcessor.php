@@ -51,6 +51,7 @@ class IngestFeedProcessor
 
         $feedString = $feedFetcher->fetchFeed($feedData->location);
         $organiserId = $feedData->organiser_id;
+        $itemSelector = $feedData->item_selector;
 
         $feedMappingsTable = clone $this->feedMappingsTable;
         $feedMappingsFromDb = $feedMappingsTable->where('feed_id', '=', $feedId)->get();
@@ -63,7 +64,11 @@ class IngestFeedProcessor
             $mappingSelectors[$row->field] = $row->selector;
         }
 
-        $parsedFeed = $feedParser->parseFeed($feedString, $mappingSelectors);
+        $parsedFeed = $feedParser->parseFeed(
+            $feedString, 
+            $itemSelector, 
+            $mappingSelectors
+        );
 
         $feedContents = [];
         foreach ($parsedFeed as $key => $parsedItem) {

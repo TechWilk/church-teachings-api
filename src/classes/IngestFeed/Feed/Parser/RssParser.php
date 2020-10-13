@@ -10,8 +10,11 @@ use Wa72\HtmlPageDom\HtmlPageCrawler;
 
 class RssParser implements FeedParserInterface
 {
-    public function parseFeed(string $contents, array $mappings): array
-    {
+    public function parseFeed(
+        string $contents, 
+        string $itemSelector, 
+        array $mappingSelectors
+    ): array {
         $crawler = new class extends Crawler {
             public function getCombinedText()
             {
@@ -26,13 +29,12 @@ class RssParser implements FeedParserInterface
 
         $crawler->addXmlContent($contents);
 
-        $itemNodes = $crawler->filter($mappings['item']);
-        unset($mappings['item']);
+        $itemNodes = $crawler->filter($itemSelector);
 
-        $data = $itemNodes->each(function ($node, $i) use ($mappings) {
+        $data = $itemNodes->each(function ($node, $i) use ($mappingSelectors) {
             $fieldsFound = false;
             $data = [];
-            foreach ($mappings as $mappedField => $selector) {
+            foreach ($mappingSelectors as $mappedField => $selector) {
                 try {
                     if (']' === substr($selector, -1)) {
                         preg_match('/\[([^\]]*)\]$/', $selector, $matches);

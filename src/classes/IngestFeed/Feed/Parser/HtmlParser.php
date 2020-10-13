@@ -9,17 +9,19 @@ use Wa72\HtmlPageDom\HtmlPageCrawler;
 
 class HtmlParser implements FeedParserInterface
 {
-    public function parseFeed(string $contents, array $mappings): array
-    {
+    public function parseFeed(
+        string $contents, 
+        string $itemSelector, 
+        array $mappingSelectors
+    ): array {
         $crawler = new HtmlPageCrawler($contents);
 
-        $itemNodes = $crawler->filter($mappings['item']);
-        unset($mappings['item']);
+        $itemNodes = $crawler->filter($itemSelector);
 
-        $data = $itemNodes->each(function (HtmlPageCrawler $node, $i) use ($mappings) {
+        $data = $itemNodes->each(function (HtmlPageCrawler $node, $i) use ($mappingSelectors) {
             $fieldsFound = false;
             $data = [];
-            foreach ($mappings as $mappedField => $selector) {
+            foreach ($mappingSelectors as $mappedField => $selector) {
                 try {
                     if (']' === substr($selector, -1)) {
                         preg_match('/\[([^\]]*)\]$/', $selector, $matches);
