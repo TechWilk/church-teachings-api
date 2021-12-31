@@ -12,7 +12,11 @@ use TechWilk\Church\Teachings\IngestFeed\Field\Cleanup\FieldCleanupInterface;
 use TechWilk\Church\Teachings\IngestFeed\Field\Validator\FieldValidatorInterface;
 use TechWilk\Church\Teachings\IngestFeed\Field\Validator\InvalidFieldException;
 use Illuminate\Database\Query\Builder;
+use InvalidArgumentException;
 use Psr\Container\ContainerInterface;
+use TechWilk\BibleVerseParser\BiblePassageParser;
+use TechWilk\BibleVerseParser\Exception\InvalidBookException;
+use TechWilk\BibleVerseParser\Exception\UnableToParseException;
 
 class IngestFeedProcessor
 {
@@ -32,7 +36,7 @@ class IngestFeedProcessor
 
     public function processFeeds()
     {
-        $feeds = $this->feedsTable->get();
+        $feeds = $this->feedsTable->where('enabled', '=', 1)->get();
 
         foreach ($feeds as $feed) {
             $this->processFeed($feed->id);
@@ -116,37 +120,95 @@ class IngestFeedProcessor
         foreach ($feedContents as $item) {
             $speakerId = $this->findSpeakerIdFromName($item['speaker']);
             $seriesId = $this->findSeriesIdFromName($organiserId, $item['series']);
+            $dedupeHash = hash('sha3-512', $item['dedupe']);
 
-            $teachingId = $teachingsTable->insertGetId([
-                'dedupe_id' => $item['dedupe'],
-                'dedupe_hash' => hash('sha3-512', $item['dedupe']),
-                'name' => $item['title'],
-                'slug' => $this->slugify($item['title']),
-                'date' => $this->parseDate($item['date'])->format('Y-m-d H:i:s'),
-                'file_hash' => '',
-                'file_url' => $item['file'] ?? '',
-                'organiser_id' => $organiserId,
-                'speaker_id' => $speakerId,
-                'series_id' => $seriesId,
-                'description' => $item['description'] ?? '',
-                'duration' => 0,
-                'url' => $item['url'],
-            ]);
+            $selectTable = clone $teachingsTable;
+            $existingRecord = $selectTable
+                        ->where('dedupe_hash', '=', $dedupeHash)
+                        ->where('organiser_id', '=', $organiserId)
+                        ->first();
 
-            $passages = $this->parseVerses($item['verses']);
+            
+            if ($existingRecord) {
+                $teachingId = $existingRecord->id;
+
+                $updateTeachingsTable = clone $teachingsTable;
+                $updateTeachingsTable
+                    ->where('organiser_id', '=', $organiserId)
+                    ->where('dedupe_hash', '=', $dedupeHash)
+                    ->update([
+                        'name' => $item['title'],
+                        'date' => $this->parseDate($item['date'])->format('Y-m-d H:i:s'),
+                        'file_hash' => '',
+                        'file_url' => $item['file'] ?? '',
+                        'speaker_id' => $speakerId,
+                        'series_id' => $seriesId,
+                        'description' => $item['description'] ?? '',
+                        'duration' => 0,
+                        'url' => $item['url'],
+                    ]);
+            } else {
+                $insertTeachingsTable = clone $teachingsTable;
+                $teachingId = $insertTeachingsTable->insertGetId([
+                    'dedupe_id' => $item['dedupe'],
+                    'dedupe_hash' => $dedupeHash,
+                    'name' => $item['title'],
+                    'slug' => $this->uniqueSlug($organiserId, $item['title']),
+                    'date' => $this->parseDate($item['date'])->format('Y-m-d H:i:s'),
+                    'file_hash' => '',
+                    'file_url' => $item['file'] ?? '',
+                    'organiser_id' => $organiserId,
+                    'speaker_id' => $speakerId,
+                    'series_id' => $seriesId,
+                    'description' => $item['description'] ?? '',
+                    'duration' => 0,
+                    'url' => $item['url'],
+                ]);
+            }
+
+            try {
+                $passages = $this->parseVerses($item['verses']);
+            } catch (InvalidBookException $e) {
+                var_dump($e->getMessage());
+
+                continue;
+            } catch (UnableToParseException $e) {
+                var_dump($e->getMessage());
+                
+                continue;
+            } catch (InvalidArgumentException $e) {
+                var_dump($e->getMessage());
+                
+                continue;
+            }
             foreach ($passages as $passage) {
-                $passagesTable->insert([
+                $selectPassagesTable = clone $passagesTable;
+                $existingPassageRecord = $selectPassagesTable
+                    ->where('teaching_id', '=', $teachingId)
+                    ->where('passage_from', '=', $passage->from()->integerNotation())
+                    ->where('passage_to', '=', $passage->to()->integerNotation())
+                    ->first();
+                if ($existingPassageRecord) {
+                    continue;
+                }
+
+                $insertPassagesTable = clone $passagesTable;
+                $insertPassagesTable->insert([
                     'teaching_id' => $teachingId,
                     'passage' => $passage,
+                    'passage_from' => $passage->from()->integerNotation(),
+                    'passage_to' => $passage->to()->integerNotation(),
                 ]);
             }
         }
-        exit;
     }
 
-    protected function parseVerses(string $verses): array
+    /** @return \TechWilk\BibleVerseParser\BiblePassage[] */
+    public function parseVerses(string $versesString): array
     {
-        return [$verses];
+        $parser = new BiblePassageParser();
+
+        return $parser->parse($versesString);
     }
 
     protected function parseDate(string $dateString): DateTimeImmutable
@@ -163,16 +225,47 @@ class IngestFeedProcessor
         }
 
         if (!$date instanceof DateTimeImmutable) {
+            $date = DateTimeImmutable::createFromFormat('d/m/YH:i', $dateString);
+        }
+
+        if (!$date instanceof DateTimeImmutable) {
             $date = DateTimeImmutable::createFromFormat('dmy', $dateString);
         }
 
         return $date;
     }
 
+    protected function uniqueSlug(int $organiserId, string $name): string
+    {
+        while (true) {
+            $name = $this->slugify($name);
+
+            $teachingsTable = $this->container->get('db')->table('teachings');
+            $exists = $teachingsTable
+                ->where('organiser_id', '=', $organiserId)
+                ->where('slug', '=', $name)
+                ->exists();
+
+            if (!$exists) {
+                return $name;
+            }
+
+            $number = 0;
+            $pattern = '/\\-([0-9]+)$/';
+            if (preg_match($pattern, $name, $matches)) {
+                $number = (int)$matches[1];
+                $name = preg_replace($pattern, '', $name);
+            }
+
+            $number += 1;
+            $name .= '-' . $number;
+        }
+    }
+
     protected function slugify(string $name): string
     {
         $name = preg_replace('/[^a-zA-Z0-9]/', '-', $name);
-        $name = preg_replace('/\-{2}/', '-', $name);
+        $name = preg_replace('/\-{2,}/', '-', $name);
         $name = strtolower($name);
 
         return $name;
