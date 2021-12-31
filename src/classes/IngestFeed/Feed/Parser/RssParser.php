@@ -6,7 +6,6 @@ namespace TechWilk\Church\Teachings\IngestFeed\Feed\Parser;
 
 use InvalidArgumentException;
 use Symfony\Component\DomCrawler\Crawler;
-use Wa72\HtmlPageDom\HtmlPageCrawler;
 
 class RssParser implements FeedParserInterface
 {
