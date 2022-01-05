@@ -15,19 +15,38 @@ class TeachingController extends AbstractController
     {
         $filters = $request->getQueryParam('filter') ?? [];
 
+        $teachingsQuery = Teaching::query();
+
         if (array_key_exists('passage', $filters)) {
             $passages = $filters['passage'];
 
             foreach ($passages as $passage) {
                 [$from, $to] = explode(',', $passage);
-                $teachings = Teaching::whereHas('passages', function (Builder $query) use ($from, $to) {
+
+                $teachingsQuery = $teachingsQuery->whereHas('passages', function (Builder $query) use ($from, $to) {
                     $query->where('passage_from', '>=', $from)->where('passage_to', '<=', $to);
-                })->get();
+                });
             }
-        } else {
-            $teachings = Teaching::get();
+        }
+        if (array_key_exists('slug', $filters)) {
+            $slug = $filters['slug'];
+
+            $teachingsQuery = $teachingsQuery->where('slug', '=', $slug);   
+        }
+        if(array_key_exists('organiser.slug', $filters)) {
+            $organiserSlug = $filters['organiser.slug']; // organisation.slug
+
+            $teachingsQuery = $teachingsQuery->whereHas('organiser', function (Builder $query) use ($organiserSlug) {
+                $query->where('slug', '=', $organiserSlug);
+            });
+        }
+        if(array_key_exists('organiser.id', $filters)) {
+            $organiserId = $filters['organiser.id']; // organisation.slug
+
+            $teachingsQuery = $teachingsQuery->where('organiser_id', '=', $organiserId);
         }
 
+        $teachings = $teachingsQuery->get();
 
         foreach($teachings as &$teaching) {
             $teaching->passages = $teaching->passages()->get();

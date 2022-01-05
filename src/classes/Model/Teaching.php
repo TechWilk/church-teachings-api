@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 
 class Teaching extends Model
 {
-    public function organisation() {
+    public function organiser() {
         return $this->belongsTo(Organisation::class);
     }
 
