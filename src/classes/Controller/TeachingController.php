@@ -14,6 +14,9 @@ class TeachingController extends AbstractController
     public function getExistingTeachings($request, $response, $args)
     {
         $filters = $request->getQueryParam('filter') ?? [];
+        if (!is_array($filters)) {
+            $filters = [];
+        }
 
         $teachingsQuery = Teaching::query();
 
