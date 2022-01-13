@@ -57,7 +57,7 @@ class TeachingController extends AbstractController
 
     public function getExistingTeaching($request, $response, $args)
     {
-        $teaching = Teaching::query()->where('slug', '=', $args['slug'])->firstOrFail();
+        $teaching = Teaching::query()->where('id', '=', $args['id'])->firstOrFail();
 
         $teaching->passages = $teaching->passages()->get();
         

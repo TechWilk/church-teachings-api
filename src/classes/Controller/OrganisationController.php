@@ -17,7 +17,7 @@ class OrganisationController extends AbstractController
         if (array_key_exists('slug', $filters)) {
             $organisation = Organisation::query()->where('slug', '=', $filters['slug'])->firstOrFail();
 
-            return $response->withJson(['data' => $organisation]);
+            return $response->withJson(['data' => [$organisation]]);
         }
 
         $organisations = Organisation::get();
@@ -27,14 +27,10 @@ class OrganisationController extends AbstractController
 
     public function getExistingOrganisation($request, $response, $args)
     {
-        if (is_numeric($args['slug'])) {
-            $organisation = Organisation::query()->find($args['slug']);
+        $organisation = Organisation::query()->find($args['id']);
 
-        } else {
-            $organisation = Organisation::query()->where('slug', '=', $args['slug'])->firstOrFail();
-        }
         
-        return $response->withJson($organisation);
+        return $response->withJson(['data' => $organisation]);
     }
 
     public function postCreateOrganisation($request, $response, $args)

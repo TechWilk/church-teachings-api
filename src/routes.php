@@ -24,13 +24,13 @@ $app->group('/feed', function($app) {
 
 $app->group('/teaching', function($app) {
     $app->get('s', TeachingController::class . ':getExistingTeachings');
-    $app->get('/{slug}', TeachingController::class . ':getExistingTeaching');
+    $app->get('/{id}', TeachingController::class . ':getExistingTeaching');
     $app->post('', TeachingController::class . ':postCreateTeaching');
 });
 
 $app->group('/organisation', function($app) {
     $app->get('s', OrganisationController::class . ':getExistingOrganisations');
-    $app->get('/{slug}', OrganisationController::class . ':getExistingOrganisation');
+    $app->get('/{id}', OrganisationController::class . ':getExistingOrganisation');
     $app->post('', OrganisationController::class . ':postCreateOrganisation');
 });
 
