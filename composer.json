@@ -20,7 +20,7 @@
         "guzzlehttp/guzzle": "^7.1",
         "wa72/htmlpagedom": "^2.0",
         "illuminate/database": "^8.9",
-        "league/html-to-markdown": "^4.10",
+        "league/html-to-markdown": "^5.1",
         "techwilk/bible-verse-parser": "^2.0"
     },
     "require-dev": {
