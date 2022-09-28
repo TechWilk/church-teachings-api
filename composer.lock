@@ -3073,16 +3073,16 @@
         },
         {
             "name": "techwilk/bible-verse-parser",
-            "version": "2.2.0",
+            "version": "2.3.0",
             "source": {
                 "type": "git",
                 "url": "https://github.com/TechWilk/bible-verse-parser.git",
-                "reference": "9edb9a94ac44cb0e4a2815159280c7375cc91f0c"
+                "reference": "44e8cbeecf60b747f844dd3cd7b5a4ce8015237d"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/TechWilk/bible-verse-parser/zipball/9edb9a94ac44cb0e4a2815159280c7375cc91f0c",
-                "reference": "9edb9a94ac44cb0e4a2815159280c7375cc91f0c",
+                "url": "https://api.github.com/repos/TechWilk/bible-verse-parser/zipball/44e8cbeecf60b747f844dd3cd7b5a4ce8015237d",
+                "reference": "44e8cbeecf60b747f844dd3cd7b5a4ce8015237d",
                 "shasum": ""
             },
             "require": {
@@ -3120,9 +3120,9 @@
             ],
             "support": {
                 "issues": "https://github.com/TechWilk/bible-verse-parser/issues",
-                "source": "https://github.com/TechWilk/bible-verse-parser/tree/2.2.0"
+                "source": "https://github.com/TechWilk/bible-verse-parser/tree/2.3.0"
             },
-            "time": "2022-05-15T20:03:15+00:00"
+            "time": "2022-09-27T18:58:48+00:00"
         },
         {
             "name": "voku/portable-ascii",
